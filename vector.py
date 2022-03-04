@@ -1,4 +1,4 @@
-from matplotlib.pyplot import figure, plot
+from matplotlib.pyplot import figure, plot, scatter
 
 class Vector2(object):
     p = 2
@@ -37,6 +37,15 @@ class Vector2(object):
     def norm(self):
         return (abs(self.x) ** Vector2.p + abs(self.y) ** Vector2.p) ** (1 / Vector2.p)
 
+
+class Point2(Vector2):
+    def plot(self):
+        scatter(self.x, self.y)
+
+    @classmethod
+    def INFINITY(cls):
+        return Point2(float('+inf'), float('+inf'))
+
 class Matrix2(object):
     def __init__(self, v1: Vector2, v2: Vector2):
         self.v1 = v1
@@ -73,7 +82,6 @@ class Matrix2(object):
 
 
 class Line(object):
-
     def __init__(self, v: Vector2, p: Vector2):
         self.v = v
         self.p = p
@@ -87,11 +95,33 @@ class Line(object):
 
         return v1 * l_d.x + n1
 
+    def __str__(self):
+        return ("Line: v=" + str(self.v) + " p=" +str(self.p))
+
 class Border(object):
     def __init__(self, p1: Vector2, p2: Vector2):
         self.p1, self.p2 = p1, p2
+        self.separates = ()
 
-    def plot(self, fig):
-        figure(fig)
+    def plot(self):
         plot([self.p1.x, self.p2.x], [self.p1.y, self.p2.y])
+
+    def does_limit(self, point: Point2):
+        return point in self.separates
+
+    def toLine(self):
+        return Line(self.p1-self.p2, self.p1)
+
+    def does_belong(self, point: Vector2):
+        M = Matrix2(self.p1, self.p2)
+        M_1 = M.inverse
+        param = M_1*point
+        return sum(param) == 1 and all(i >= 0 and i <= 1 for i in param)
+
+    def split(self, point:Vector2):
+        '''Assummes the point is in border'''
+        return Border(self.p1, point), Border(self.p2, point)
+
+    def __str__(self):
+        return("Border: " + str(self.p1) + " <-> " + str(self.p2))
 

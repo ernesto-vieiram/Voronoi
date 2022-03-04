@@ -1,6 +1,6 @@
 import random
 import matplotlib.pyplot as plt
-from vector import Vector2, Matrix2
+from vector import Vector2, Matrix2, Line, Border, Point2
 
 def get_points_set(N_POINTS, N_CLASSES):
     POINTS = []
@@ -42,8 +42,6 @@ def create_frame(N_POINTS, N_CLASSES, k):
 def graph_points(POINTS, figure):
     plt.figure(figure)
     plt.scatter([tuple(p)[0] for p in POINTS], [tuple(p)[1] for p in POINTS], c=CLASSES, s=20)
-
-
 
 def graph_closest_line (points, closests, figure ,k = 1):
     plt.figure(figure)
@@ -148,6 +146,25 @@ CLOSESTS = get_closests(DISTANCES)
 
 fig = create_frame(N_POINTS, N_CLASSES, k)
 graph_points(POINTS, fig)
+
+BORDERS = [
+    Border(Vector2(0, 0), Vector2(1,0)),
+    Border(Vector2(1, 0), Vector2(1,1)),
+    Border(Vector2(1, 1), Vector2(0,1)),
+    Border(Vector2(0, 1), Vector2(0,0))
+]
+
+init_point = POINTS[0]
+
+for border in BORDERS:
+    border.separates = (Point.INFINITY, init_point)
+
+for point_i in range(1, len(POINTS)):
+    point = POINTS[point_i]
+    belongs_to = CLOSESTS[point_i][1]
+
+
+
 
 #graph_closest_line(POINTS, CLOSESTS, figure)
 #graph_mediatrices(POINTS, CLOSESTS, figure, 5)
