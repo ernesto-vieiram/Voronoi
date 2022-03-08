@@ -1,6 +1,6 @@
 import random
 import matplotlib.pyplot as plt
-from vector import Vector2, Matrix2, Line, Border, Point2
+from vector import Vector2, Matrix2, Line, Border
 
 def get_points_set(N_POINTS, N_CLASSES):
     POINTS = []
@@ -8,7 +8,7 @@ def get_points_set(N_POINTS, N_CLASSES):
     i = 0
     random.seed(100)
     while i < N_POINTS:
-        POINTS.append(Point2(2*random.random()-1, 2*random.random()-1))
+        POINTS.append(Vector2(2*random.random()-1, 2*random.random()-1))
         CLASSES.append(random.randint(0, N_CLASSES - 1))
         i += 1
     return POINTS, CLASSES
@@ -47,14 +47,26 @@ def graph_borders(BORDERS, figure):
     plt.figure(figure)
     for border in BORDERS: border.plot()
 
-def get_region_borders(point: Point2, borders):
+def get_region_borders(point: Vector2, borders):
     ret = []
+    does = None
     for border in borders:
-        assert isinstance(border, Border)
-        if border.does_limit(point): ret.append(border)
+        #POINT TO BEGIN CYCLE FROM BORDER
+        does =  border.does_limit(point)
+        if does != None: break
+    if does == None: return []
+    #START POINT: DOES & BORDER
+    next = border.get_next(does)
+    next_p = border.get_next_point(does)
+    ret.append(border)
+    while next != border:
+        ret.append(next)
+        prev = next_p
+        next_p = next.get_next_point(prev)
+        next = next.get_next(prev)
     return ret
 
-def create_mediatrix(p1: Point2, p2: Point2):
+def create_mediatrix(p1: Vector2, p2: Vector2):
     dif = p1 - p2
     perp = dif.perpendicular.normalise()
     middle = (p1 + p2) / 2
@@ -82,19 +94,25 @@ POINTS, CLASSES = get_points_set(N_POINTS, N_CLASSES)
 DISTANCES = get_distances(POINTS)
 CLOSESTS = get_closests(DISTANCES)
 fig = create_frame(N_POINTS, N_CLASSES, k)
-BORDERS = [
-    Border(Point2(-1, -1), Point2(1,-1)),
-    Border(Point2(1, -1), Point2(1,1)),
-    Border(Point2(1, 1), Point2(-1,1)),
-    Border(Point2(-1, 1), Point2(-1,-1))
-]
+
 init_point = POINTS[0]
-for border in BORDERS:
-    border.separates = (Point2.INFINITY(), init_point)
+b_d = Border(Vector2(-1, -1), Vector2(1,-1))
+b_r = Border(Vector2(1, -1), Vector2(1,1))
+b_u = Border(Vector2(1, 1), Vector2(-1,1))
+b_l = Border(Vector2(-1, 1), Vector2(-1,-1))
+b_d.set_next((1,-1), b_l)
+b_l.set_next((-1, -1), b_u)
+b_u.set_next((-1, 1), b_r)
+b_r.set_next((1,1), b_d)
+b_d.separates = {(-1, -1): Vector2.INFINITY(), (1,-1): init_point}
+b_l.separates = {(-1, 1): Vector2.INFINITY(), (-1,-1): init_point}
+b_u.separates = {(1, 1): Vector2.INFINITY(), (-1,1): init_point}
+b_r.separates = {(1, -1): Vector2.INFINITY(), (1,1): init_point}
+BORDERS = [b_d, b_r, b_l, b_u]
 
 plt.figure(fig)
 #VORONOI
-for point_i in range(1,2):
+for point_i in range(1,N_POINTS):
     point = POINTS[point_i]
     point.plot()
     #GET POINT OF REGION
@@ -103,6 +121,8 @@ for point_i in range(1,2):
     region_border = get_region_borders(belongs, BORDERS)
     #CALCULATE BISECTOR point - belongs
     bisector = create_mediatrix(point, belongs)
+    INTERSECTIONS = []
+    print(belongs, [str(i) for i in region_border])
     #UPDATE BORDERS
     for border in region_border:
         #TODO: DETECT IF AN INTERSECTION IS WITH A FRAME OR OTHER
@@ -110,20 +130,32 @@ for point_i in range(1,2):
         intersection = calculate_intersection(border.toLine(), bisector)
         #CHECK IF INTERSECTION POINT IS IN BORDER LIMITS
         if border.does_belong(intersection):
-            #IF IT EXISTS; SPLIT THE BORDER INTO TWO BORDERS
+            #IF IT EXISTS; ADD INTERSECTION, SPLIT THE BORDER INTO TWO BORDERS
+            INTERSECTIONS.append(intersection)
             b1, b2 = border.split(intersection)
-            #TODO: UPDATE THE separates attribute OF b1 & b2
-            # uno pertenece a belongs y otro
+            #TODO: INICIALIZAR NEXTS de b1 y b2
             v1 = b1.p1-intersection
             v2 = b2.p2-intersection
             v = belongs-intersection
+            for p in border.separates:
+                if border.separates[p] != point: other = border.separates[p]
             if v1*v > 0:
-                #Border p1 restringe belongs
-                #Border p2 restringe point
+                #Border b1 restringe belongs
+                b1.separates = (belongs, other)
+                #Border b2 restringe point
+                b2.separates = (point, other)
             else:
-                #Border p1 restringe point
-                #Border p2 restringe belongs
-
+                #Border b1 restringe point
+                b1.separates = (point, other)
+                #Border b2 restringe belongs
+                b2.separates = (belongs, other)
+            BORDERS.remove(border)
+            BORDERS.append(b1)
+            BORDERS.append(b2)
+        #TODO: update border if it does not limit point anynmore -> change to
+    print(len(INTERSECTIONS))
+    print(INTERSECTIONS[0])
+    b_v = INTERSECTIONS[0]-INTERSECTIONS[1]
 
 
 graph_points(POINTS, fig)

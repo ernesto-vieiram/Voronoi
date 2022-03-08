@@ -14,7 +14,7 @@ class Vector2(object):
         if isinstance(other, float) or isinstance(other, int):
             return Vector2(self.x*other, self.y*other)
         elif isinstance(other, Vector2):
-            return Vector2(self.x * other.x, self.y * other.y)
+            return self.x * other.x + self.y * other.y
     def __truediv__(self, other):
         return Vector2(self.x/other, self.y/other)
     def __rmul__(self, other):
@@ -30,21 +30,17 @@ class Vector2(object):
             yield i
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
+    @classmethod
+    def INFINITY(cls):
+        return Vector2(float('+inf'), float('+inf'))
     @property
     def perpendicular(self):
         return Vector2(-self.y, self.x)
     @property
     def norm(self):
         return (abs(self.x) ** Vector2.p + abs(self.y) ** Vector2.p) ** (1 / Vector2.p)
-
-
-class Point2(Vector2):
     def plot(self):
         scatter(self.x, self.y)
-
-    @classmethod
-    def INFINITY(cls):
-        return Point2(float('+inf'), float('+inf'))
 
 class Matrix2(object):
     def __init__(self, v1: Vector2, v2: Vector2):
@@ -101,16 +97,25 @@ class Line(object):
 class Border(object):
     def __init__(self, p1: Vector2, p2: Vector2):
         self.p1, self.p2 = p1, p2
-        self.separates = ()
+        self.separates = {tuple(p1): None, tuple(p2): None}
+        #Next [i] represents the next border to travel when
+        #entering Border from i following clockwise path.
+        self.next = {tuple(p1): None, tuple(p2): None}
 
     def plot(self):
         plot([self.p1.x, self.p2.x], [self.p1.y, self.p2.y])
 
-    def does_limit(self, point: Point2):
-        return point in self.separates
+    def does_limit(self, point: Vector2):
+        for p in self.separates.keys():
+            if self.separates[p] == point:
+                return p
+        return None
 
     def toLine(self):
         return Line(self.p1-self.p2, self.p1)
+
+    def toVector(self):
+        return self.p1-self.p2
 
     def does_belong(self, point: Vector2):
         M = Matrix2(self.p1, self.p2)
@@ -125,3 +130,14 @@ class Border(object):
     def __str__(self):
         return("Border: " + str(self.p1) + " <-> " + str(self.p2))
 
+    def set_next(self, point, next):
+        self.next[tuple(point)] = next
+
+    def get_next(self, point):
+        return self.next[tuple(point)]
+
+    def get_next_point(self, point):
+        if tuple(self.p1) == tuple(point):
+            return self.p2
+        else:
+            return self.p1
